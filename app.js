@@ -1,25 +1,65 @@
 import { makeModel } from "./recoveryModel.js";
 
+function mustGet(id) {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing element: #${id}`);
+  return el;
+}
+
 const els = {
-  intensity: document.getElementById("intensity"),
-  duration: document.getElementById("duration"),
-  hoursSince: document.getElementById("hoursSince"),
-  readyFraction: document.getElementById("readyFraction"),
-  horizon: document.getElementById("horizon"),
+  intensity: mustGet("intensity"),
+  duration: mustGet("duration"),
+  hoursSince: mustGet("hoursSince"),
+  readyFraction: mustGet("readyFraction"),
+  horizon: mustGet("horizon"),
 
-  intensityOut: document.getElementById("intensityOut"),
-  durationOut: document.getElementById("durationOut"),
-  hoursSinceOut: document.getElementById("hoursSinceOut"),
-  readyFractionOut: document.getElementById("readyFractionOut"),
-  horizonOut: document.getElementById("horizonOut"),
+  intensityOut: mustGet("intensityOut"),
+  durationOut: mustGet("durationOut"),
+  hoursSinceOut: mustGet("hoursSinceOut"),
+  readyFractionOut: mustGet("readyFractionOut"),
+  horizonOut: mustGet("horizonOut"),
 
-  recoveryPct: document.getElementById("recoveryPct"),
-  timeToRecover: document.getElementById("timeToRecover"),
-  remainingLoad: document.getElementById("remainingLoad"),
-  explainText: document.getElementById("explainText"),
+  recoveryPct: mustGet("recoveryPct"),
+  timeToRecover: mustGet("timeToRecover"),
+  remainingLoad: mustGet("remainingLoad"),
+  explainText: mustGet("explainText"),
 };
 
-const ctx = document.getElementById("recoveryChart");
+const ctx = mustGet("recoveryChart");
+
+if (!window.Chart) {
+  throw new Error("Chart.js not loaded. Check the CDN script tag in index.html or your network connection.");
+}
+
+// Add a vertical "Now" line using a lightweight plugin
+const nowLinePlugin = {
+  id: "nowLine",
+  afterDraw(chartInstance, args, pluginOptions) {
+    const xNow = pluginOptions?.xNow;
+    if (xNow == null) return;
+
+    const { ctx, chartArea, scales } = chartInstance;
+    const xScale = scales.x;
+    const x = xScale.getPixelForValue(xNow);
+
+    if (x < chartArea.left || x > chartArea.right) return;
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x, chartArea.top);
+    ctx.lineTo(x, chartArea.bottom);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.9;
+    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
+    ctx.fillText("Now", Math.min(x + 6, chartArea.right - 30), chartArea.top + 14);
+    ctx.restore();
+  }
+};
+Chart.register(nowLinePlugin);
 
 const chart = new Chart(ctx, {
   type: "line",
@@ -73,35 +113,34 @@ const chart = new Chart(ctx, {
   },
 });
 
-// Add a vertical "Now" line using a lightweight plugin
-const nowLinePlugin = {
-  id: "nowLine",
-  afterDraw(chartInstance, args, pluginOptions) {
-    const xNow = pluginOptions?.xNow;
-    if (xNow == null) return;
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 
-    const { ctx, chartArea, scales } = chartInstance;
-    const xScale = scales.x;
-    const x = xScale.getPixelForValue(xNow);
+function applyChartTheme() {
+  const text = cssVar("--text");
+  const muted = cssVar("--muted");
+  const border = cssVar("--border");
 
-    if (x < chartArea.left || x > chartArea.right) return;
+  chart.options.scales.x.ticks.color = muted;
+  chart.options.scales.y.ticks.color = muted;
+  chart.options.scales.x.grid.color = border;
+  chart.options.scales.y.grid.color = border;
 
-    ctx.save();
-    ctx.lineWidth = 1;
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(x, chartArea.top);
-    ctx.lineTo(x, chartArea.bottom);
-    ctx.stroke();
+  chart.options.plugins.legend.labels.color = muted;
 
-    ctx.globalAlpha = 0.9;
-    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
-    ctx.fillText("Now", Math.min(x + 6, chartArea.right - 30), chartArea.top + 14);
-    ctx.restore();
-  }
-};
-Chart.register(nowLinePlugin);
+  // Dataset colors
+  chart.data.datasets[0].borderColor = text;
+  chart.data.datasets[1].borderColor = muted;
+
+  chart.update();
+}
+
+// Apply on load and when system theme changes
+applyChartTheme();
+window
+  .matchMedia("(prefers-color-scheme: light)")
+  .addEventListener("change", applyChartTheme);
 
 function readInputs() {
   return {

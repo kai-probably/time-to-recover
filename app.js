@@ -83,21 +83,6 @@ const zoneAndGradientPlugin = {
     ctx.fillStyle = danger;
     ctx.fillRect(chartArea.left, yThreshold, chartArea.right - chartArea.left, chartArea.bottom - yThreshold);
     ctx.restore();
-  },
-  afterLayout(chartInstance) {
-    const { ctx, chartArea } = chartInstance;
-    if (!chartArea) return;
-
-    const accent = cssVar("--accent") || "#1d68d8";
-    const danger = cssVar("--danger") || "#d81d3a";
-
-    const grad = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
-    grad.addColorStop(0, danger);
-    grad.addColorStop(1, accent);
-
-    chartInstance.data.datasets[0].borderColor = grad;
-    chartInstance.data.datasets[0].backgroundColor = "rgba(29,104,216,0.08)";
-    chartInstance.data.datasets[0].fill = "origin";
   }
 };
 Chart.register(zoneAndGradientPlugin);
@@ -113,6 +98,21 @@ const chart = new Chart(ctx, {
         tension: 0.25,
         borderWidth: 2,
         pointRadius: 0,
+        fill: "origin",
+        borderColor: (context) => {
+          const { chart } = context;
+          const { ctx: c, chartArea } = chart;
+          if (!chartArea) return cssVar("--accent") || "#1d68d8";
+
+          const accent = cssVar("--accent") || "#1d68d8";
+          const danger = cssVar("--danger") || "#d81d3a";
+
+          const grad = c.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
+          grad.addColorStop(0, danger);
+          grad.addColorStop(1, accent);
+          return grad;
+        },
+        backgroundColor: "rgba(29,104,216,0.08)",
       },
       {
         label: "Ready line",
@@ -166,14 +166,8 @@ function applyChartTheme() {
 
   chart.options.plugins.legend.labels.color = muted;
 
-  // Dataset colors
-  const accent = cssVar("--accent") || text;
+  // Dataset colors (leave dataset[0] scriptable gradient intact)
   const danger = cssVar("--danger") || muted;
-
-  chart.data.datasets[0].borderColor = accent; // may be overridden by gradient plugin afterLayout
-  chart.data.datasets[0].backgroundColor = "rgba(29,104,216,0.08)";
-  chart.data.datasets[0].fill = "origin";
-
   chart.data.datasets[1].borderColor = danger;
 
   chart.update();

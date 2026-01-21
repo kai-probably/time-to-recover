@@ -31,6 +31,10 @@ if (!window.Chart) {
   throw new Error("Chart.js not loaded. Check the CDN script tag in index.html or your network connection.");
 }
 
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 // Add a vertical "Now" line using a lightweight plugin
 const nowLinePlugin = {
   id: "nowLine",
@@ -61,20 +65,57 @@ const nowLinePlugin = {
 };
 Chart.register(nowLinePlugin);
 
+const zoneAndGradientPlugin = {
+  id: "zoneAndGradient",
+  beforeDraw(chartInstance, args, pluginOptions) {
+    const { ctx, chartArea, scales } = chartInstance;
+    if (!chartArea) return;
+
+    const yScale = scales.y;
+    const threshold = pluginOptions?.threshold;
+    if (threshold == null) return;
+
+    const yThreshold = yScale.getPixelForValue(threshold);
+
+    // For RECOVERY (0..1 increasing), "not ready yet" is BELOW threshold.
+    const danger = pluginOptions?.dangerColor || "rgba(216,29,58,0.10)";
+    ctx.save();
+    ctx.fillStyle = danger;
+    ctx.fillRect(chartArea.left, yThreshold, chartArea.right - chartArea.left, chartArea.bottom - yThreshold);
+    ctx.restore();
+  },
+  afterLayout(chartInstance) {
+    const { ctx, chartArea } = chartInstance;
+    if (!chartArea) return;
+
+    const accent = cssVar("--accent") || "#1d68d8";
+    const danger = cssVar("--danger") || "#d81d3a";
+
+    const grad = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
+    grad.addColorStop(0, danger);
+    grad.addColorStop(1, accent);
+
+    chartInstance.data.datasets[0].borderColor = grad;
+    chartInstance.data.datasets[0].backgroundColor = "rgba(29,104,216,0.08)";
+    chartInstance.data.datasets[0].fill = "origin";
+  }
+};
+Chart.register(zoneAndGradientPlugin);
+
 const chart = new Chart(ctx, {
   type: "line",
   data: {
     labels: [],
     datasets: [
       {
-        label: "Remaining load",
+        label: "Recovery",
         data: [],
         tension: 0.25,
         borderWidth: 2,
         pointRadius: 0,
       },
       {
-        label: "Ready threshold",
+        label: "Ready line",
         data: [],
         tension: 0,
         borderWidth: 1,
@@ -113,10 +154,6 @@ const chart = new Chart(ctx, {
   },
 });
 
-function cssVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
-
 function applyChartTheme() {
   const text = cssVar("--text");
   const muted = cssVar("--muted");
@@ -130,8 +167,14 @@ function applyChartTheme() {
   chart.options.plugins.legend.labels.color = muted;
 
   // Dataset colors
-  chart.data.datasets[0].borderColor = text;
-  chart.data.datasets[1].borderColor = muted;
+  const accent = cssVar("--accent") || text;
+  const danger = cssVar("--danger") || muted;
+
+  chart.data.datasets[0].borderColor = accent; // may be overridden by gradient plugin afterLayout
+  chart.data.datasets[0].backgroundColor = "rgba(29,104,216,0.08)";
+  chart.data.datasets[0].fill = "origin";
+
+  chart.data.datasets[1].borderColor = danger;
 
   chart.update();
 }
@@ -180,22 +223,22 @@ function update() {
       // keep these "hidden assumptions" simple:
       intensityExponent: 1.25,
       baseTauHours: 14.0,
-      tauPerIntensity: 2.0,
+      tauPerIntensity: 4.0,
       readyFraction: inp.readyFraction
     }
   );
 
   const recoveryPct = Math.max(0, Math.min(100, model.recoveryPercent));
-  const remainingPct = Math.max(0, Math.min(1, model.fatigueFractionNow));
+  const recoveryFrac = Math.max(0, Math.min(1, 1 - model.fatigueFractionNow));
 
   els.recoveryPct.textContent = `${Math.round(recoveryPct)}%`;
-  els.remainingLoad.textContent = `${Math.round(remainingPct * 100)}%`;
+  els.remainingLoad.textContent = `${Math.round(recoveryFrac * 100)}%`;
   els.timeToRecover.textContent = formatHours(model.hoursUntilReady);
 
   els.explainText.textContent =
     model.hoursUntilReady <= 0
-      ? "You’re past the threshold where another session should be comparatively efficient (in this model)."
-      : "Remaining load is above the threshold. Waiting longer should increase the efficiency of your next session.";
+      ? "You’re good to go — another session should be worth doing now."
+      : "Give it a bit more time — you’ll get more value from your next session once you’re past the line.";
 
   // build chart series
   const step = 1; // hours
@@ -206,9 +249,12 @@ function update() {
   const horizon = inp.horizon;
   for (let h = 0; h <= horizon; h += step) {
     labels.push(h);
-    const frac = model.load > 0 ? (model.fatigueAt(h) / model.load) : 0;
-    series.push(frac);
-    threshold.push(model.readyFraction);
+    const remaining = model.load > 0 ? (model.fatigueAt(h) / model.load) : 0;
+    const recovery = 1 - remaining;
+    series.push(recovery);
+
+    // Ready when recovery >= 1 - readyFraction
+    threshold.push(1 - model.readyFraction);
   }
 
   chart.data.labels = labels;
@@ -216,6 +262,10 @@ function update() {
   chart.data.datasets[1].data = threshold;
 
   chart.options.plugins.nowLine = { xNow: inp.hoursSince };
+  chart.options.plugins.zoneAndGradient = {
+    threshold: 1 - model.readyFraction,
+    dangerColor: "rgba(216,29,58,0.10)"
+  };
   chart.update();
 }
 

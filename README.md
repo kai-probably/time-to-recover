@@ -27,4 +27,4 @@ It answers a narrower question:
 **“When does training again stop being obviously inefficient?”**
 
 ### GitHub Pages
-Enable Pages: Settings → Pages → Deploy from branch → `main` / root.
+https://kai-probably.github.io/time-to-recover/

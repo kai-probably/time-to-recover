@@ -72,17 +72,43 @@ const zoneAndGradientPlugin = {
     if (!chartArea) return;
 
     const yScale = scales.y;
-    const threshold = pluginOptions?.threshold;
-    if (threshold == null) return;
 
-    const yThreshold = yScale.getPixelForValue(threshold);
+    // thresholds are on the RECOVERY scale (0..1), where higher = more recovered
+    const ready = pluginOptions?.readyThreshold; // e.g. 0.75
+    const full = pluginOptions?.fullThreshold;   // e.g. 0.90
 
-    // For RECOVERY (0..1 increasing), "not ready yet" is BELOW threshold.
+    if (ready == null) return;
+
+    const yReady = yScale.getPixelForValue(ready);
+    const yFull = full == null ? null : yScale.getPixelForValue(full);
+
+    // 1) Fatigue-dominant region (below ready line)
     const danger = pluginOptions?.dangerColor || "rgba(216,29,58,0.10)";
     ctx.save();
     ctx.fillStyle = danger;
-    ctx.fillRect(chartArea.left, yThreshold, chartArea.right - chartArea.left, chartArea.bottom - yThreshold);
+    ctx.fillRect(
+      chartArea.left,
+      yReady,
+      chartArea.right - chartArea.left,
+      chartArea.bottom - yReady
+    );
     ctx.restore();
+
+    // 2) Productive region (neutral) -> intentionally no tint
+
+    // 3) Fully recovered region (above full line)
+    if (yFull != null) {
+      const positive = pluginOptions?.positiveColor || "rgba(29,104,216,0.06)";
+      ctx.save();
+      ctx.fillStyle = positive;
+      ctx.fillRect(
+        chartArea.left,
+        chartArea.top,
+        chartArea.right - chartArea.left,
+        yFull - chartArea.top
+      );
+      ctx.restore();
+    }
   }
 };
 Chart.register(zoneAndGradientPlugin);
@@ -256,9 +282,14 @@ function update() {
   chart.data.datasets[1].data = threshold;
 
   chart.options.plugins.nowLine = { xNow: inp.hoursSince };
+  // Regions on the RECOVERY scale:
+  // - readyThreshold: where training becomes "worth doing"
+  // - fullThreshold: conservative "fully recovered" region (UX aid, not a physiological claim)
   chart.options.plugins.zoneAndGradient = {
-    threshold: 1 - model.readyFraction,
-    dangerColor: "rgba(216,29,58,0.10)"
+    readyThreshold: 1 - model.readyFraction,
+    fullThreshold: 0.90,
+    dangerColor: "rgba(216,29,58,0.10)",
+    positiveColor: "rgba(29,104,216,0.06)"
   };
   chart.update();
 }

@@ -2,15 +2,21 @@
 // Framework-free, inspectable math.
 // Philosophy: predict "efficiency readiness", not medical recovery.
 
+// NOTE:
+// This model estimates short-term fatigue decay and "readiness".
+// It does NOT model performance, adaptation, or supercompensation.
+
 export function makeModel(inputs, params) {
-  const intensity = clamp(inputs.intensity, 1, 10);
+  // Intensity is a coarse, user-estimated scale (1–5)
+  const intensity = clamp(inputs.intensity, 1, 5);
   const durationMin = clamp(inputs.durationMin, 0, 10000);
   const hoursSince = clamp(inputs.hoursSince, 0, 10000);
 
   const p = {
     intensityExponent: params.intensityExponent ?? 1.25,
     baseTauHours: params.baseTauHours ?? 14.0,
-    tauPerIntensity: params.tauPerIntensity ?? 2.0,
+    // Higher intensity slows recovery; tuned for 1–5 scale
+    tauPerIntensity: params.tauPerIntensity ?? 4.0,
     readyFraction: clamp(params.readyFraction ?? 0.25, 0.01, 0.99),
   };
 

@@ -102,3 +102,110 @@ const recoveryChart = new Chart(ctx, {
 });
 
 export default recoveryChart;
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Time to Recover</title>
+  <link rel="stylesheet" href="./style.css" />
+
+  <!-- Chart.js from CDN (no build step) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <main class="wrap">
+    <header class="header">
+      <h1>Time to Recover</h1>
+      <p class="sub">
+        A simple, explainable model that estimates how long until your next session is “worth doing” again.
+        Not medical advice—just math and assumptions.
+      </p>
+    </header>
+
+    <section class="card">
+      <div class="row">
+        <div class="metric">
+          <div class="label">Recovery</div>
+          <div class="value" id="recoveryPct">—%</div>
+        </div>
+        <div class="metric">
+          <div class="label">Rest</div>
+          <div class="value" id="timeToRecover">—</div>
+          <div class="miniHint">Time until your next session is worth doing</div>
+        </div>
+        <div class="metric">
+          <div class="label">Recovery</div>
+          <div class="value" id="remainingLoad">—%</div>
+          <div class="miniHint">How recovered you are from the last session</div>
+        </div>
+      </div>
+
+      <div class="chartWrap">
+        <canvas id="recoveryChart" aria-label="Recovery curve chart" role="img"></canvas>
+      </div>
+
+      <p class="note" id="explainText"></p>
+    </section>
+
+    <section class="card">
+      <h2>Last training</h2>
+
+      <div class="control">
+        <div class="controlTop">
+          <label for="intensity">Intensity</label>
+          <output id="intensityOut">3</output>
+        </div>
+        <input id="intensity" type="range" min="1" max="5" step="1" value="3" />
+        <div class="hint">1 = easy, 5 = brutal. Duration matters, but intensity matters more.</div>
+      </div>
+
+      <div class="control">
+        <div class="controlTop">
+          <label for="duration">Duration (minutes)</label>
+          <output id="durationOut">60</output>
+        </div>
+        <input id="duration" type="range" min="10" max="180" step="5" value="60" />
+      </div>
+
+      <div class="control">
+        <div class="controlTop">
+          <label for="hoursSince">Hours since last training</label>
+          <output id="hoursSinceOut">12</output>
+        </div>
+        <input id="hoursSince" type="range" min="0" max="168" step="1" value="12" />
+      </div>
+
+      <details class="advanced">
+        <summary>Assumptions (tunable)</summary>
+
+        <div class="control">
+          <div class="controlTop">
+            <label for="readyFraction">Readiness threshold</label>
+            <output id="readyFractionOut">25%</output>
+          </div>
+          <input id="readyFraction" type="range" min="0.10" max="0.50" step="0.01" value="0.25" />
+          <div class="hint">“Ready” when remaining load drops below this fraction of peak.</div>
+        </div>
+
+        <div class="control">
+          <div class="controlTop">
+            <label for="horizon">Chart horizon (hours)</label>
+            <output id="horizonOut">72</output>
+          </div>
+          <input id="horizon" type="range" min="24" max="168" step="6" value="72" />
+        </div>
+      </details>
+    </section>
+
+    <footer class="footer">
+      <p>
+        Repo: <span class="mono">time-to-recover</span> · Static site suitable for GitHub Pages.
+      </p>
+    </footer>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

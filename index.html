@@ -51,9 +51,113 @@
     .card{
       background:var(--card);
       border:1px solid var(--border);
-      border-radius:14px;
-      padding:16px;
+      border-radius:16px;
+      padding:18px;
       margin:14px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .legendBlock{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .legendRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1;
+      user-select:none;
+    }
+
+    .swatch{
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      display:inline-block;
+      flex:0 0 auto;
+    }
+
+    .swatchLine{
+      width:18px;
+      height:0;
+      border-top:2px solid var(--accent);
+      border-radius:999px;
+      display:inline-block;
+      flex:0 0 auto;
+    }
+
+    .swatchLineDashed{
+      width:18px;
+      height:0;
+      border-top:2px dashed var(--danger);
+      border-radius:999px;
+      display:inline-block;
+      flex:0 0 auto;
+    }
+
+    .swatchNow{
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      background: var(--text);
+      display:inline-block;
+      flex:0 0 auto;
+      position:relative;
+    }
+    .swatchNow::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:-10px;
+      transform:translateX(-50%);
+      width:0;
+      height:20px;
+      border-left:1px dashed rgba(127,127,127,0.8);
+    }
+
+    /* Nicer sliders (still simple, no external libs) */
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      height:6px;
+      border-radius:999px;
+      background: linear-gradient(90deg, rgba(127,127,127,0.25), rgba(127,127,127,0.10));
+      outline:none;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background: var(--card);
+      border:1px solid var(--border);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      cursor:pointer;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background: var(--card);
+      border:1px solid var(--border);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      cursor:pointer;
     }
 
     .row{
@@ -132,6 +236,19 @@
 
       <div class="chartWrap">
         <canvas id="recoveryChart" aria-label="Recovery curve chart" role="img"></canvas>
+      </div>
+
+      <div class="legendBlock" aria-label="Chart legend">
+        <div class="legendRow">
+          <span class="chip"><span class="swatchLine"></span> Recovery curve</span>
+          <span class="chip"><span class="swatchLineDashed"></span> Ready line</span>
+          <span class="chip"><span class="swatchNow"></span> Now</span>
+        </div>
+        <div class="legendRow" aria-label="Recovery zones">
+          <span class="chip"><span class="swatch" style="background: rgba(216,29,58,0.18)"></span> Too early: mostly fatigue</span>
+          <span class="chip"><span class="swatch" style="background: rgba(0,0,0,0.0)"></span> Productive</span>
+          <span class="chip"><span class="swatch" style="background: rgba(29,104,216,0.12)"></span> Fully recovered (conservative)</span>
+        </div>
       </div>
 
       <p class="note" id="explainText"></p>
@@ -290,6 +407,41 @@
     };
     Chart.register(zonesPlugin);
 
+    // ----- now marker plugin (vertical line) -----
+    const nowLinePlugin = {
+      id: "nowLine",
+      afterDraw(chart, args, pluginOptions){
+        const xNow = pluginOptions?.xNow;
+        if (xNow == null) return;
+
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea) return;
+        const xScale = scales.x;
+
+        // x is numeric hours in our labels array
+        const x = xScale.getPixelForValue(xNow);
+        if (x < chartArea.left || x > chartArea.right) return;
+
+        ctx.save();
+        ctx.strokeStyle = cssVar("--muted") || "rgba(127,127,127,0.9)";
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = cssVar("--muted") || "rgba(127,127,127,0.9)";
+        ctx.globalAlpha = 0.95;
+        ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
+        ctx.fillText("Now", Math.min(x + 6, chartArea.right - 30), chartArea.top + 14);
+        ctx.restore();
+      }
+    };
+    Chart.register(nowLinePlugin);
+
     // ----- elements -----
     const els = {
       intensity: $("intensity"),
@@ -323,7 +475,7 @@
           {
             label: "Recovery",
             data: [],
-            tension: 0.25,
+            tension: 0.35,
             borderWidth: 2,
             pointRadius: 0,
             fill: "origin",
@@ -349,6 +501,16 @@
             borderDash: [6,4],
             pointRadius: 0,
             borderColor: () => cssVar("--danger") || "rgba(216,29,58,0.55)"
+          },
+          {
+            label: "Now",
+            type: "scatter",
+            data: [],
+            pointRadius: 5,
+            pointHoverRadius: 6,
+            showLine: false,
+            borderWidth: 0,
+            pointBackgroundColor: () => cssVar("--text") || "#0f1114",
           }
         ],
       },
@@ -369,10 +531,14 @@
           },
         },
         plugins: {
-          legend: { display: true, labels: { color: () => cssVar("--muted") || "#4b5563" } },
+          legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y * 100)}%`
+              label: (ctx) => {
+                const y = ctx.parsed?.y ?? ctx.raw?.y;
+                if (y == null) return ctx.dataset.label;
+                return `${ctx.dataset.label}: ${Math.round(y * 100)}%`;
+              }
             }
           },
           zones: {
@@ -380,10 +546,11 @@
             fullThreshold: 0.90,
             dangerColor: "rgba(216,29,58,0.14)",
             positiveColor: "rgba(29,104,216,0.08)"
-          }
+          },
+          nowLine: { xNow: 12 }
         }
       },
-      plugins: [zonesPlugin]
+      plugins: [zonesPlugin, nowLinePlugin]
     });
 
     function readInputs(){
@@ -445,6 +612,26 @@
       chart.options.plugins.zones.fullThreshold = inp.fullThreshold;
       chart.options.plugins.zones.dangerColor = "rgba(216,29,58,0.14)";
       chart.options.plugins.zones.positiveColor = "rgba(29,104,216,0.08)";
+
+      // now marker (dot on curve + vertical line)
+      chart.data.datasets[2].data = [{ x: inp.hoursSince, y: model.recoveryNow }];
+      chart.options.plugins.nowLine.xNow = inp.hoursSince;
+
+      // human-speak explanation based on zones
+      const ready = model.readyRecovery;
+      const full = inp.fullThreshold;
+      const now = model.recoveryNow;
+
+      if (now < ready){
+        els.explainText.textContent =
+          "Too early: you’re still in the fatigue-dominant zone. Waiting a bit makes your next session more productive.";
+      } else if (now < full){
+        els.explainText.textContent =
+          "Productive: you’re recovered enough that another session is generally worth doing.";
+      } else {
+        els.explainText.textContent =
+          "Fully recovered (conservative): fatigue is unlikely to be the limiting factor right now.";
+      }
 
       chart.update();
     }

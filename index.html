@@ -1,107 +1,104 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <title>Time to Recover</title>
-  <link rel="stylesheet" href="./style.css" />
+import { cssVar } from "./utils.js";
 
-  <!-- Chart.js from CDN (no build step) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-</head>
-<body>
-  <main class="wrap">
-    <header class="header">
-      <h1>Time to Recover</h1>
-      <p class="sub">
-        A simple, explainable model that estimates how long until your next session is “worth doing” again.
-        Not medical advice—just math and assumptions.
-      </p>
-    </header>
+const zoneAndGradientPlugin = {
+  id: "zoneAndGradient",
+  beforeDraw(chart, args, options) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
 
-    <section class="card">
-      <div class="row">
-        <div class="metric">
-          <div class="label">Recovery</div>
-          <div class="value" id="recoveryPct">—%</div>
-        </div>
-        <div class="metric">
-          <div class="label">Rest</div>
-          <div class="value" id="timeToRecover">—</div>
-          <div class="miniHint">Time until your next session is worth doing</div>
-        </div>
-        <div class="metric">
-          <div class="label">Recovery</div>
-          <div class="value" id="remainingLoad">—%</div>
-          <div class="miniHint">How recovered you are from the last session</div>
-        </div>
-      </div>
+    // Debug: subtle outline to confirm the plugin is running (remove later if desired)
+    ctx.save();
+    ctx.strokeStyle = cssVar("--border") || "rgba(0,0,0,0.15)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+    ctx.restore();
 
-      <div class="chartWrap">
-        <canvas id="recoveryChart" aria-label="Recovery curve chart" role="img"></canvas>
-      </div>
+    const pluginOptions = chart.options.plugins.zoneAndGradient || {};
+    const ready = pluginOptions?.readyThreshold;
+    const full = pluginOptions?.fullThreshold;
+    const dangerColor = pluginOptions?.dangerColor || "rgba(216,29,58,0.10)";
+    const positiveColor = pluginOptions?.positiveColor || "rgba(29,104,216,0.06)";
 
-      <p class="note" id="explainText"></p>
-    </section>
+    if (ready === undefined || full === undefined) return;
 
-    <section class="card">
-      <h2>Last training</h2>
+    const yAxis = scales.y;
+    const top = chartArea.top;
+    const bottom = chartArea.bottom;
+    const left = chartArea.left;
+    const right = chartArea.right;
 
-      <div class="control">
-        <div class="controlTop">
-          <label for="intensity">Intensity</label>
-          <output id="intensityOut">3</output>
-        </div>
-        <input id="intensity" type="range" min="1" max="5" step="1" value="3" />
-        <div class="hint">1 = easy, 5 = brutal. Duration matters, but intensity matters more.</div>
-      </div>
+    const readyY = yAxis.getPixelForValue(ready);
+    const fullY = yAxis.getPixelForValue(full);
 
-      <div class="control">
-        <div class="controlTop">
-          <label for="duration">Duration (minutes)</label>
-          <output id="durationOut">60</output>
-        </div>
-        <input id="duration" type="range" min="10" max="180" step="5" value="60" />
-      </div>
+    ctx.save();
 
-      <div class="control">
-        <div class="controlTop">
-          <label for="hoursSince">Hours since last training</label>
-          <output id="hoursSinceOut">12</output>
-        </div>
-        <input id="hoursSince" type="range" min="0" max="168" step="1" value="12" />
-      </div>
+    // Danger zone (above full threshold)
+    ctx.fillStyle = dangerColor;
+    ctx.fillRect(left, top, right - left, fullY - top);
 
-      <details class="advanced">
-        <summary>Assumptions (tunable)</summary>
+    // Positive zone (between ready and full)
+    ctx.fillStyle = positiveColor;
+    ctx.fillRect(left, fullY, right - left, readyY - fullY);
 
-        <div class="control">
-          <div class="controlTop">
-            <label for="readyFraction">Readiness threshold</label>
-            <output id="readyFractionOut">25%</output>
-          </div>
-          <input id="readyFraction" type="range" min="0.10" max="0.50" step="0.01" value="0.25" />
-          <div class="hint">“Ready” when remaining load drops below this fraction of peak.</div>
-        </div>
+    ctx.restore();
+  },
+};
 
-        <div class="control">
-          <div class="controlTop">
-            <label for="horizon">Chart horizon (hours)</label>
-            <output id="horizonOut">72</output>
-          </div>
-          <input id="horizon" type="range" min="24" max="168" step="6" value="72" />
-        </div>
-      </details>
-    </section>
+const ctx = document.getElementById("recoveryChart").getContext("2d");
 
-    <footer class="footer">
-      <p>
-        Repo: <span class="mono">time-to-recover</span> · Static site suitable for GitHub Pages.
-      </p>
-    </footer>
-  </main>
+const recoveryChart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: "Recovery",
+        data: [],
+        borderColor: cssVar("--accent"),
+        backgroundColor: cssVar("--accent"),
+        fill: false,
+        tension: 0.3,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    animation: false,
+    scales: {
+      x: {
+        type: "linear",
+        position: "bottom",
+        min: 0,
+        max: 72,
+        ticks: {
+          stepSize: 12,
+          callback: (val) => `${val}h`,
+        },
+      },
+      y: {
+        min: 0,
+        max: 1,
+        ticks: {
+          callback: (val) => `${Math.round(val * 100)}%`,
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        enabled: false,
+      },
+      zoneAndGradient: {
+        readyThreshold: 0.75,
+        fullThreshold: 0.90,
+        dangerColor: "rgba(216,29,58,0.10)",
+        positiveColor: "rgba(29,104,216,0.06)"
+      },
+    },
+  },
+  plugins: [zoneAndGradientPlugin],
+});
 
-  <script type="module" src="./app.js"></script>
-</body>
-</html>
+export default recoveryChart;

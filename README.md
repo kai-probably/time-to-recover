@@ -28,7 +28,7 @@ The curve represents how *remaining fatigue* decreases.
 - **Green zone (Fully recovered, conservative)**  
   Fatigue is unlikely to be the limiting factor. This does not imply peak performance.
 
-  ## Assumptions
+## Assumptions
 
 - Fatigue decays exponentially over time
 - Intensity matters more than duration

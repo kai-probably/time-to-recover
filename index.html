@@ -5,17 +5,229 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
   <title>Time to Recover</title>
-  <link rel="stylesheet" href="./style.css" />
 
   <!-- Chart.js from CDN (no build step) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#0f1114;
+      --muted:#4b5563;
+      --border:rgba(15,17,20,0.12);
+      --panel:rgba(15,17,20,0.03);
+
+      --accent:#1d68d8;
+      --danger:#d81d3a;
+      --good:#16a34a;
+    }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0f1114;
+        --card:#171a1f;
+        --text:#e8eef3;
+        --muted:#aab3be;
+        --border:rgba(255,255,255,0.12);
+        --panel:rgba(255,255,255,0.05);
+
+        --accent:#4f9bff;
+        --danger:#ff4f6d;
+        --good:#22c55e;
+      }
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:980px;margin:40px auto;padding:0 16px}
+    .header{margin-bottom:16px}
+    .header h1{margin:0 0 8px 0;font-size:28px;letter-spacing:-0.02em}
+    .sub{margin:0;color:var(--muted);line-height:1.4}
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:18px;
+      margin:14px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .legendBlock{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .legendRow{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1;
+      user-select:none;
+    }
+
+    .swatch{
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      display:inline-block;
+      flex:0 0 auto;
+    }
+
+    /* Zone swatches + tints (theme-driven; with rgba fallback) */
+    .zoneDangerSwatch{
+      background: rgba(216,29,58,0.18);
+      background: color-mix(in srgb, var(--danger) 18%, transparent);
+    }
+    .zonePositiveSwatch{
+  background: rgba(34,197,94,0.14);
+  background: color-mix(in srgb, var(--good) 16%, transparent);
+}
+    .zoneNeutralSwatch{
+      background: rgba(127,127,127,0.10);
+      background: color-mix(in srgb, var(--muted) 14%, transparent);
+    }
+
+    .swatchLine{
+      width:18px;
+      height:0;
+      border-top:2px solid var(--accent);
+      border-radius:999px;
+      display:inline-block;
+      flex:0 0 auto;
+    }
+
+    .swatchLineDashed{
+      width:18px;
+      height:0;
+      border-top:2px dashed var(--danger);
+      border-radius:999px;
+      display:inline-block;
+      flex:0 0 auto;
+    }
+
+    .swatchNow{
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      background: var(--text);
+      display:inline-block;
+      flex:0 0 auto;
+      position:relative;
+    }
+    .swatchNow::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:-10px;
+      transform:translateX(-50%);
+      width:0;
+      height:20px;
+      border-left:1px dashed rgba(127,127,127,0.8);
+    }
+
+    /* Nicer sliders (still simple, no external libs) */
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      height:6px;
+      border-radius:999px;
+      background: linear-gradient(90deg, rgba(127,127,127,0.25), rgba(127,127,127,0.10));
+      outline:none;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background: var(--card);
+      border:1px solid var(--border);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      cursor:pointer;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background: var(--card);
+      border:1px solid var(--border);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      cursor:pointer;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .metric{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px;
+      background:var(--panel);
+    }
+    .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+    .value{font-size:28px;font-weight:700;margin-top:6px}
+    .miniHint{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.25}
+
+    .chartWrap{
+      height:320px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:14px;
+      background:var(--panel);
+    }
+    .chartWrap canvas{
+      width:100% !important;
+      height:100% !important;
+      display:block;
+    }
+
+    .note{margin:10px 2px 0;color:var(--muted);line-height:1.35}
+
+    h2{margin:0 0 10px 0;font-size:16px}
+    .control{margin:12px 0}
+    .controlTop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    label{font-weight:600}
+    output{font-variant-numeric:tabular-nums;color:var(--muted)}
+    input[type="range"]{width:100%}
+    .hint{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.25}
+
+    details.advanced{margin-top:10px}
+    details.advanced summary{cursor:pointer;color:var(--muted);font-weight:600}
+    .footer{color:var(--muted);font-size:12px;margin-top:18px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+  </style>
 </head>
+
 <body>
   <main class="wrap">
     <header class="header">
       <h1>Time to Recover</h1>
       <p class="sub">
-        A simple, explainable model that estimates how long until your next session is “efficient” again.
+        A simple, explainable model that estimates short‑term recovery and when your next session is “worth doing” again.
         Not medical advice—just math and assumptions.
       </p>
     </header>
@@ -32,14 +244,26 @@
           <div class="miniHint">Time until your next session is worth doing</div>
         </div>
         <div class="metric">
-          <div class="label">Recovery</div>
-          <div class="value" id="remainingLoad">—%</div>
+          <div class="label">Recovery now</div>
+          <div class="value" id="recoveryNow">—%</div>
           <div class="miniHint">How recovered you are from the last session</div>
         </div>
       </div>
 
       <div class="chartWrap">
         <canvas id="recoveryChart" aria-label="Recovery curve chart" role="img"></canvas>
+      </div>
+
+      <div class="legendBlock" aria-label="Chart legend">
+        <div class="legendRow">
+          <span class="chip"><span class="swatchLine"></span> Recovery curve</span>
+          <span class="chip"><span class="swatchLineDashed"></span> Ready line</span>
+          <span class="chip"><span class="swatchNow"></span> Now</span>
+        </div>
+        <div class="legendRow" aria-label="Recovery zones">
+  <span class="chip"><span class="swatch zoneDangerSwatch"></span> Too early: mostly fatigue</span>
+  <span class="chip"><span class="swatch zonePositiveSwatch"></span> Fully recovered (conservative)</span>
+</div>
       </div>
 
       <p class="note" id="explainText"></p>
@@ -68,9 +292,9 @@
       <div class="control">
         <div class="controlTop">
           <label for="hoursSince">Hours since last training</label>
-          <output id="hoursSinceOut">12</output>
+          <output id="hoursSinceOut">24</output>
         </div>
-        <input id="hoursSince" type="range" min="0" max="168" step="1" value="12" />
+        <input id="hoursSince" type="range" min="0" max="168" step="1" value="24" />
       </div>
 
       <details class="advanced">
@@ -82,7 +306,7 @@
             <output id="readyFractionOut">25%</output>
           </div>
           <input id="readyFraction" type="range" min="0.10" max="0.50" step="0.01" value="0.25" />
-          <div class="hint">“Ready” when remaining load drops below this fraction of peak.</div>
+          <div class="hint">“Ready” when remaining fatigue drops below this fraction of the session peak.</div>
         </div>
 
         <div class="control">
@@ -92,16 +316,370 @@
           </div>
           <input id="horizon" type="range" min="24" max="168" step="6" value="72" />
         </div>
+
+        <div class="control">
+          <div class="controlTop">
+            <label for="fullThreshold">Fully recovered zone</label>
+            <output id="fullThresholdOut">90%</output>
+          </div>
+          <input id="fullThreshold" type="range" min="0.80" max="0.99" step="0.01" value="0.90" />
+          <div class="hint">Pure UX: a conservative “fully recovered” region. Not a physiological claim.</div>
+        </div>
       </details>
     </section>
 
     <footer class="footer">
-      <p>
-        Repo: <span class="mono">time-to-recover</span> · Static site suitable for GitHub Pages.
-      </p>
+      <p>Single-file demo · Static site suitable for GitHub Pages · <span class="mono">index.html</span></p>
     </footer>
   </main>
 
-  <script type="module" src="./app.js"></script>
+  <script>
+    // ----- helpers -----
+    function $(id){ const el=document.getElementById(id); if(!el) throw new Error("Missing element: #"+id); return el; }
+    function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+    function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+    function roundTo(x, places){ const p=Math.pow(10,places); return Math.round(x*p)/p; }
+    function formatHours(hours){
+      if (hours < 1) return "<1h";
+      if (hours < 24) return `${Math.round(hours)}h`;
+      const days = hours / 24;
+      return `${roundTo(days, 1)}d`;
+    }
+
+    // ----- minimal model (fatigue decay -> recovery) -----
+    // NOTE: This estimates short-term fatigue decay and "readiness".
+    // It does NOT model performance, adaptation, or supercompensation.
+    function makeModel(inputs, params){
+      const intensity = clamp(inputs.intensity, 1, 5);
+      const durationMin = clamp(inputs.durationMin, 1, 1000);
+      const hoursSince = clamp(inputs.hoursSince, 0, 10000);
+
+      const intensityExponent = params.intensityExponent ?? 1.25;
+      const baseTauHours = params.baseTauHours ?? 14.0;
+      const tauPerIntensity = params.tauPerIntensity ?? 4.0;
+      const readyFraction = clamp(params.readyFraction ?? 0.25, 0.01, 0.99);
+
+      // load is an arbitrary unit: higher intensity and longer duration -> more fatigue
+      const load = Math.pow(intensity, intensityExponent) * durationMin;
+
+      // recovery time constant grows with intensity
+      const tau = baseTauHours + intensity * tauPerIntensity;
+
+      function fatigueAt(h){
+        return load * Math.exp(-h / tau);
+      }
+
+      const fatigueNow = fatigueAt(hoursSince);
+      const remainingFrac = load > 0 ? (fatigueNow / load) : 0; // 0..1
+      const recoveryNow = 1 - remainingFrac; // 0..1
+
+      const readyRecovery = 1 - readyFraction;
+      const hoursUntilReady = (readyRecovery <= recoveryNow) ? 0 : (() => {
+        // Solve for h where fatigueAt(h)/load <= readyFraction
+        // exp(-h/tau) <= readyFraction  => h >= -tau * ln(readyFraction)
+        return Math.max(0, (-tau * Math.log(readyFraction)) - hoursSince);
+      })();
+
+      // "percent" for the headline: interpret recoveryNow
+      const recoveryPercent = clamp(recoveryNow * 100, 0, 100);
+
+      return { load, tau, hoursSince, readyFraction, readyRecovery, recoveryNow, recoveryPercent, hoursUntilReady, fatigueAt };
+    }
+
+    // ----- zone plugin: regions with meaning -----
+    const zonesPlugin = {
+      id: "zones",
+      beforeDraw(chart, args, pluginOptions){
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea) return;
+
+        const opts = pluginOptions || {};
+        const ready = opts.readyThreshold;
+        const full = opts.fullThreshold;
+
+        if (ready == null) return;
+
+        const y = scales.y;
+        const yReady = y.getPixelForValue(ready);
+        const yFull = (full == null) ? null : y.getPixelForValue(full);
+
+        // 1) Fatigue-dominant region (below ready)
+        ctx.save();
+        ctx.fillStyle = opts.dangerColor || "rgba(216,29,58,0.14)";
+        ctx.fillRect(chartArea.left, yReady, chartArea.right - chartArea.left, chartArea.bottom - yReady);
+        ctx.restore();
+
+        // 2) Productive region (neutral) intentionally no tint
+
+        // 3) Fully recovered region (above full)
+        if (yFull != null){
+          ctx.save();
+          ctx.fillStyle = opts.positiveColor || "rgba(34,197,94,0.10)";
+          ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, yFull - chartArea.top);
+          ctx.restore();
+        }
+      }
+    };
+    Chart.register(zonesPlugin);
+
+    // ----- now marker plugin (vertical line) -----
+    const nowLinePlugin = {
+      id: "nowLine",
+      afterDraw(chart, args, pluginOptions){
+        const xNow = pluginOptions?.xNow;
+        if (xNow == null) return;
+
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea) return;
+        const xScale = scales.x;
+
+        // x is numeric hours in our labels array
+        const x = xScale.getPixelForValue(xNow);
+        if (x < chartArea.left || x > chartArea.right) return;
+
+        ctx.save();
+        ctx.strokeStyle = cssVar("--muted") || "rgba(127,127,127,0.9)";
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = cssVar("--muted") || "rgba(127,127,127,0.9)";
+        ctx.globalAlpha = 0.95;
+        ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
+        ctx.fillText("Now", Math.min(x + 6, chartArea.right - 30), chartArea.top + 14);
+        ctx.restore();
+      }
+    };
+    Chart.register(nowLinePlugin);
+
+    // ----- elements -----
+    const els = {
+      intensity: $("intensity"),
+      duration: $("duration"),
+      hoursSince: $("hoursSince"),
+      readyFraction: $("readyFraction"),
+      horizon: $("horizon"),
+      fullThreshold: $("fullThreshold"),
+
+      intensityOut: $("intensityOut"),
+      durationOut: $("durationOut"),
+      hoursSinceOut: $("hoursSinceOut"),
+      readyFractionOut: $("readyFractionOut"),
+      horizonOut: $("horizonOut"),
+      fullThresholdOut: $("fullThresholdOut"),
+
+      recoveryPct: $("recoveryPct"),
+      recoveryNow: $("recoveryNow"),
+      timeToRecover: $("timeToRecover"),
+      explainText: $("explainText"),
+
+      canvas: $("recoveryChart"),
+    };
+
+    // ----- chart -----
+    const chart = new Chart(els.canvas, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Recovery",
+            data: [],
+            tension: 0.35,
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: "origin",
+            borderColor: (context) => {
+              const { chart } = context;
+              const { ctx: c, chartArea } = chart;
+              if (!chartArea) return cssVar("--accent") || "#1d68d8";
+
+              const accent = cssVar("--accent") || "#1d68d8";
+              const danger = cssVar("--danger") || "#d81d3a";
+              const grad = c.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
+              grad.addColorStop(0, danger);
+              grad.addColorStop(1, accent);
+              return grad;
+            },
+            backgroundColor: () => "rgba(29,104,216,0.08)",
+          },
+          {
+            label: "Ready line",
+            data: [],
+            tension: 0,
+            borderWidth: 1,
+            borderDash: [6,4],
+            pointRadius: 0,
+            borderColor: () => cssVar("--danger") || "rgba(216,29,58,0.55)"
+          },
+          {
+            label: "Now",
+            type: "scatter",
+            data: [],
+            pointRadius: 5,
+            pointHoverRadius: 6,
+            showLine: false,
+            borderWidth: 0,
+            pointBackgroundColor: () => cssVar("--text") || "#0f1114",
+          }
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+          y: {
+            min: 0,
+            max: 1,
+            ticks: { callback: (v) => `${Math.round(v * 100)}%` },
+            grid: { color: () => cssVar("--border") || "rgba(0,0,0,0.12)" }
+          },
+          x: {
+            type: "linear",
+            min: 0,
+            ticks: {
+              stepSize: 12,
+              color: () => cssVar("--muted") || "#4b5563",
+              callback: (value) => `${value}h`
+            },
+            grid: { color: () => cssVar("--border") || "rgba(0,0,0,0.12)" }
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const y = ctx.parsed?.y ?? ctx.raw?.y;
+                if (y == null) return ctx.dataset.label;
+                return `${ctx.dataset.label}: ${Math.round(y * 100)}%`;
+              }
+            }
+          },
+          zones: {
+            readyThreshold: 0.75,
+            fullThreshold: 0.90,
+            dangerColor: "rgba(216,29,58,0.14)",
+            positiveColor: "rgba(34,197,94,0.10)"
+          },
+          nowLine: { xNow: 24 }
+        }
+      },
+      plugins: [zonesPlugin, nowLinePlugin]
+    });
+
+    function readInputs(){
+      return {
+        intensity: Number(els.intensity.value),
+        durationMin: Number(els.duration.value),
+        hoursSince: Number(els.hoursSince.value),
+        readyFraction: Number(els.readyFraction.value),
+        horizon: Number(els.horizon.value),
+        fullThreshold: Number(els.fullThreshold.value),
+      };
+    }
+
+    function update(){
+      const inp = readInputs();
+
+      els.intensityOut.textContent = `${inp.intensity}`;
+      els.durationOut.textContent = `${inp.durationMin}`;
+      els.hoursSinceOut.textContent = `${inp.hoursSince}`;
+      els.readyFractionOut.textContent = `${Math.round(inp.readyFraction * 100)}%`;
+      els.horizonOut.textContent = `${inp.horizon}`;
+      els.fullThresholdOut.textContent = `${Math.round(inp.fullThreshold * 100)}%`;
+
+      const model = makeModel(
+        { intensity: inp.intensity, durationMin: inp.durationMin, hoursSince: inp.hoursSince },
+        { intensityExponent: 1.25, baseTauHours: 14.0, tauPerIntensity: 4.0, readyFraction: inp.readyFraction }
+      );
+
+      // headline values
+      els.recoveryPct.textContent = `${Math.round(model.recoveryPercent)}%`;
+      els.recoveryNow.textContent = `${Math.round(model.recoveryNow * 100)}%`;
+      els.timeToRecover.textContent = formatHours(model.hoursUntilReady);
+
+      els.explainText.textContent =
+        model.hoursUntilReady <= 0
+          ? "You’re good to go — another session should be worth doing now."
+          : "Give it a bit more time — you’ll get more value from your next session once you’re past the line.";
+
+      // build series (recovery over time)
+      const step = 1;
+      const series = [];
+      const readyLine = [];
+
+      for (let h = 0; h <= inp.horizon; h += step){
+        const remaining = model.load > 0 ? (model.fatigueAt(h) / model.load) : 0;
+        const recovery = 1 - remaining;
+        series.push({ x: h, y: recovery });
+        readyLine.push({ x: h, y: model.readyRecovery });
+      }
+
+      chart.data.datasets[0].data = series;
+      chart.data.datasets[1].data = readyLine;
+      chart.options.scales.x.max = inp.horizon;
+
+      // update zones (regions with meaning)
+      chart.options.plugins.zones.readyThreshold = model.readyRecovery;
+      chart.options.plugins.zones.fullThreshold = inp.fullThreshold;
+      function hexToRgba(hex, a){
+        const h = (hex || "").trim();
+        // Accept #rgb or #rrggbb; fall back to provided string if not hex
+        if (!h.startsWith("#")) return h;
+        const raw = h.slice(1);
+        const full = raw.length === 3 ? raw.split("").map(ch => ch + ch).join("") : raw;
+        if (full.length !== 6) return h;
+        const r = parseInt(full.slice(0,2), 16);
+        const g = parseInt(full.slice(2,4), 16);
+        const b = parseInt(full.slice(4,6), 16);
+        return `rgba(${r},${g},${b},${a})`;
+      }
+
+      const dangerHex = cssVar("--danger") || "#d81d3a";
+const goodHex = cssVar("--good") || "#16a34a";
+chart.options.plugins.zones.dangerColor = hexToRgba(dangerHex, 0.14);
+chart.options.plugins.zones.positiveColor = hexToRgba(goodHex, 0.10);
+
+      // now marker (dot on curve + vertical line)
+      chart.data.datasets[2].data = [{ x: inp.hoursSince, y: model.recoveryNow }];
+      chart.options.plugins.nowLine.xNow = inp.hoursSince;
+
+      // human-speak explanation based on zones
+      const ready = model.readyRecovery;
+      const full = inp.fullThreshold;
+      const now = model.recoveryNow;
+
+      if (now < ready){
+        els.explainText.textContent =
+          "Too early: you’re still in the fatigue-dominant zone. Waiting a bit makes your next session more productive.";
+      } else if (now < full){
+        els.explainText.textContent =
+          "Productive: you’re recovered enough that another session is generally worth doing.";
+      } else {
+        els.explainText.textContent =
+          "Fully recovered (conservative): fatigue is unlikely to be the limiting factor right now.";
+      }
+
+      chart.update();
+    }
+
+    ["input","change"].forEach(evt => {
+      els.intensity.addEventListener(evt, update);
+      els.duration.addEventListener(evt, update);
+      els.hoursSince.addEventListener(evt, update);
+      els.readyFraction.addEventListener(evt, update);
+      els.horizon.addEventListener(evt, update);
+      els.fullThreshold.addEventListener(evt, update);
+    });
+
+    update();
+  </script>
 </body>
 </html>

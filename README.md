@@ -2,7 +2,7 @@
 
 Fitness recovery time can be calculated, probably.
 --
-
+https://kai-probably.github.io/time-to-recover/
 
 A tiny GitHub Pages proof-of-concept that visualizes a simple recovery curve from:
 - intensity (1–10)
@@ -42,5 +42,3 @@ Medical advice. It doesn’t know:
 It answers a narrower question:
 **“When does training again stop being obviously inefficient?”**
 
-### GitHub Pages
-https://kai-probably.github.io/time-to-recover/

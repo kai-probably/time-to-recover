@@ -92,6 +92,20 @@
       flex:0 0 auto;
     }
 
+    /* Zone swatches + tints (theme-driven; with rgba fallback) */
+    .zoneDangerSwatch{
+      background: rgba(216,29,58,0.18);
+      background: color-mix(in srgb, var(--danger) 18%, transparent);
+    }
+    .zonePositiveSwatch{
+      background: rgba(29,104,216,0.12);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+    .zoneNeutralSwatch{
+      background: rgba(127,127,127,0.10);
+      background: color-mix(in srgb, var(--muted) 14%, transparent);
+    }
+
     .swatchLine{
       width:18px;
       height:0;
@@ -245,9 +259,9 @@
           <span class="chip"><span class="swatchNow"></span> Now</span>
         </div>
         <div class="legendRow" aria-label="Recovery zones">
-          <span class="chip"><span class="swatch" style="background: rgba(216,29,58,0.18)"></span> Too early: mostly fatigue</span>
-          <span class="chip"><span class="swatch" style="background: rgba(0,0,0,0.0)"></span> Productive</span>
-          <span class="chip"><span class="swatch" style="background: rgba(29,104,216,0.12)"></span> Fully recovered (conservative)</span>
+          <span class="chip"><span class="swatch zoneDangerSwatch"></span> Too early: mostly fatigue</span>
+          <span class="chip"><span class="swatch zoneNeutralSwatch"></span> Productive</span>
+          <span class="chip"><span class="swatch zonePositiveSwatch"></span> Fully recovered (conservative)</span>
         </div>
       </div>
 
@@ -610,8 +624,23 @@
       // update zones (regions with meaning)
       chart.options.plugins.zones.readyThreshold = model.readyRecovery;
       chart.options.plugins.zones.fullThreshold = inp.fullThreshold;
-      chart.options.plugins.zones.dangerColor = "rgba(216,29,58,0.14)";
-      chart.options.plugins.zones.positiveColor = "rgba(29,104,216,0.08)";
+      function hexToRgba(hex, a){
+        const h = (hex || "").trim();
+        // Accept #rgb or #rrggbb; fall back to provided string if not hex
+        if (!h.startsWith("#")) return h;
+        const raw = h.slice(1);
+        const full = raw.length === 3 ? raw.split("").map(ch => ch + ch).join("") : raw;
+        if (full.length !== 6) return h;
+        const r = parseInt(full.slice(0,2), 16);
+        const g = parseInt(full.slice(2,4), 16);
+        const b = parseInt(full.slice(4,6), 16);
+        return `rgba(${r},${g},${b},${a})`;
+      }
+
+      const dangerHex = cssVar("--danger") || "#d81d3a";
+      const accentHex = cssVar("--accent") || "#1d68d8";
+      chart.options.plugins.zones.dangerColor = hexToRgba(dangerHex, 0.14);
+      chart.options.plugins.zones.positiveColor = hexToRgba(accentHex, 0.08);
 
       // now marker (dot on curve + vertical line)
       chart.data.datasets[2].data = [{ x: inp.hoursSince, y: model.recoveryNow }];

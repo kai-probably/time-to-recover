@@ -20,6 +20,7 @@
 
       --accent:#1d68d8;
       --danger:#d81d3a;
+      --good:#16a34a;
     }
 
     @media (prefers-color-scheme: dark){
@@ -33,6 +34,7 @@
 
         --accent:#4f9bff;
         --danger:#ff4f6d;
+        --good:#22c55e;
       }
     }
 
@@ -98,9 +100,9 @@
       background: color-mix(in srgb, var(--danger) 18%, transparent);
     }
     .zonePositiveSwatch{
-      background: rgba(29,104,216,0.12);
-      background: color-mix(in srgb, var(--accent) 12%, transparent);
-    }
+  background: rgba(34,197,94,0.14);
+  background: color-mix(in srgb, var(--good) 16%, transparent);
+}
     .zoneNeutralSwatch{
       background: rgba(127,127,127,0.10);
       background: color-mix(in srgb, var(--muted) 14%, transparent);
@@ -259,10 +261,9 @@
           <span class="chip"><span class="swatchNow"></span> Now</span>
         </div>
         <div class="legendRow" aria-label="Recovery zones">
-          <span class="chip"><span class="swatch zoneDangerSwatch"></span> Too early: mostly fatigue</span>
-          <span class="chip"><span class="swatch zoneNeutralSwatch"></span> Productive</span>
-          <span class="chip"><span class="swatch zonePositiveSwatch"></span> Fully recovered (conservative)</span>
-        </div>
+  <span class="chip"><span class="swatch zoneDangerSwatch"></span> Too early: mostly fatigue</span>
+  <span class="chip"><span class="swatch zonePositiveSwatch"></span> Fully recovered (conservative)</span>
+</div>
       </div>
 
       <p class="note" id="explainText"></p>
@@ -638,9 +639,9 @@
       }
 
       const dangerHex = cssVar("--danger") || "#d81d3a";
-      const accentHex = cssVar("--accent") || "#1d68d8";
-      chart.options.plugins.zones.dangerColor = hexToRgba(dangerHex, 0.14);
-      chart.options.plugins.zones.positiveColor = hexToRgba(accentHex, 0.08);
+const goodHex = cssVar("--good") || "#16a34a";
+chart.options.plugins.zones.dangerColor = hexToRgba(dangerHex, 0.14);
+chart.options.plugins.zones.positiveColor = hexToRgba(goodHex, 0.10);
 
       // now marker (dot on curve + vertical line)
       chart.data.datasets[2].data = [{ x: inp.hoursSince, y: model.recoveryNow }];

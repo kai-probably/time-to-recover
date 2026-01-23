@@ -1,6 +1,6 @@
 # Time to Recover
 
-Fitness recovery time can be calculated, probably.
+Fitness recovery time calculation. Not medical advice!
 --
 https://kai-probably.github.io/time-to-recover/
 

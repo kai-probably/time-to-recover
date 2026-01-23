@@ -413,7 +413,7 @@
         // 3) Fully recovered region (above full)
         if (yFull != null){
           ctx.save();
-          ctx.fillStyle = opts.positiveColor || "rgba(29,104,216,0.08)";
+          ctx.fillStyle = opts.positiveColor || "rgba(34,197,94,0.10)";
           ctx.fillRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, yFull - chartArea.top);
           ctx.restore();
         }
@@ -559,7 +559,7 @@
             readyThreshold: 0.75,
             fullThreshold: 0.90,
             dangerColor: "rgba(216,29,58,0.14)",
-            positiveColor: "rgba(29,104,216,0.08)"
+            positiveColor: "rgba(34,197,94,0.10)"
           },
           nowLine: { xNow: 12 }
         }

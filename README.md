@@ -5,40 +5,32 @@ Fitness recovery time calculation. Not medical advice!
 https://kai-probably.github.io/time-to-recover/
 
 A tiny GitHub Pages proof-of-concept that visualizes a simple recovery curve from:
-- intensity (1–10)
+- intensity (1–5)
 - duration (minutes)
 - hours since last training
 
-### What it is
-A model of **remaining training load** that decays over time:
-- load = duration × intensity^p
-- remaining(t) = exp(-t/τ)
+## What this models (and what it doesn’t)
 
-## Scientific inspiration (simplified)
+This tool models **fatigue decay over time** after a single training session.
+It does **not** model performance, adaptation, or long-term supercompensation.
 
-This proof-of-concept is **inspired by** training load approaches where a training “impulse” produces an effect that **decays exponentially** over time (impulse-response / fitness–fatigue style modeling).  
-It also borrows the general idea behind TRIMP-like methods where training load is related to **duration × intensity** (often with intensity weighted nonlinearly).
+The curve represents how *remaining fatigue* decreases.
+“Recovery” is defined as the inverse of remaining fatigue.
 
-**Important:** this repo does *not* implement a validated performance model.  
-It intentionally uses a **single-decay** curve (“remaining load”) to answer a narrower UX question:
+## Interpreting the graph
 
-> “When does training again stop being obviously inefficient?”
+- **Red zone (Too early)**  
+  Fatigue is still dominant. Training here is more likely to feel heavy and less productive.
 
-References / background reading:
-- Fitness–fatigue / impulse-response model overviews and time constants: (see literature review)  
-- Discussion of impulse-response modeling and exponential decay in training effects  
-- Practical use of exponentially weighted training load concepts in Performance Manager-style systems  
-- TRIMP concept for quantifying training impulse (duration × intensity weighting)
+- **Middle zone (Ready)**  
+  Enough recovery has occurred that another session is generally worth doing.
 
-Intensity also slows recovery by increasing τ (harder sessions recover slower).
+- **Green zone (Fully recovered, conservative)**  
+  Fatigue is unlikely to be the limiting factor. This does not imply peak performance.
 
-### What it is NOT
-Medical advice. It doesn’t know:
-- injury status
-- sleep quality
-- soreness distribution
-- stress or illness
+  ## Assumptions
 
-It answers a narrower question:
-**“When does training again stop being obviously inefficient?”**
-
+- Fatigue decays exponentially over time
+- Intensity matters more than duration
+- Readiness is a configurable threshold, not a biological constant
+- The model is deliberately conservative

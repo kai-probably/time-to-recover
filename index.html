@@ -292,9 +292,9 @@
       <div class="control">
         <div class="controlTop">
           <label for="hoursSince">Hours since last training</label>
-          <output id="hoursSinceOut">12</output>
+          <output id="hoursSinceOut">24</output>
         </div>
-        <input id="hoursSince" type="range" min="0" max="168" step="1" value="12" />
+        <input id="hoursSince" type="range" min="0" max="168" step="1" value="24" />
       </div>
 
       <details class="advanced">
@@ -541,7 +541,13 @@
             grid: { color: () => cssVar("--border") || "rgba(0,0,0,0.12)" }
           },
           x: {
-            ticks: { maxTicksLimit: 8, color: () => cssVar("--muted") || "#4b5563" },
+            type: "linear",
+            min: 0,
+            ticks: {
+              stepSize: 12,
+              color: () => cssVar("--muted") || "#4b5563",
+              callback: (value) => `${value}h`
+            },
             grid: { color: () => cssVar("--border") || "rgba(0,0,0,0.12)" }
           },
         },
@@ -562,7 +568,7 @@
             dangerColor: "rgba(216,29,58,0.14)",
             positiveColor: "rgba(34,197,94,0.10)"
           },
-          nowLine: { xNow: 12 }
+          nowLine: { xNow: 24 }
         }
       },
       plugins: [zonesPlugin, nowLinePlugin]
@@ -606,21 +612,19 @@
 
       // build series (recovery over time)
       const step = 1;
-      const labels = [];
       const series = [];
       const readyLine = [];
 
       for (let h = 0; h <= inp.horizon; h += step){
-        labels.push(h);
         const remaining = model.load > 0 ? (model.fatigueAt(h) / model.load) : 0;
         const recovery = 1 - remaining;
-        series.push(recovery);
-        readyLine.push(model.readyRecovery);
+        series.push({ x: h, y: recovery });
+        readyLine.push({ x: h, y: model.readyRecovery });
       }
 
-      chart.data.labels = labels;
       chart.data.datasets[0].data = series;
       chart.data.datasets[1].data = readyLine;
+      chart.options.scales.x.max = inp.horizon;
 
       // update zones (regions with meaning)
       chart.options.plugins.zones.readyThreshold = model.readyRecovery;

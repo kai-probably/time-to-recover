@@ -68,7 +68,7 @@
     .legendRow{
       display:flex;
       flex-wrap:wrap;
-      gap:10px;
+      gap:8px;
       align-items:center;
     }
 
@@ -76,15 +76,19 @@
       display:inline-flex;
       align-items:center;
       gap:8px;
-      padding:7px 10px;
+      padding:6px 8px;
       border-radius:999px;
       border:1px solid var(--border);
       background:var(--panel);
       color:var(--muted);
-      font-size:12px;
+      font-size:11px;
       line-height:1;
       user-select:none;
     }
+    .statusTag{ font-weight:800; }
+    .statusDanger{ color: var(--danger); }
+    .statusReady{ color: var(--accent); }
+    .statusGood{ color: var(--good); }
 
     .swatch{
       width:12px;
@@ -254,15 +258,13 @@
       </div>
 
       <div class="legendBlock" aria-label="Chart legend">
-        <div class="legendRow">
+        <div class="legendRow" aria-label="Chart legend and zones">
           <span class="chip"><span class="swatchLine"></span> Recovery curve</span>
           <span class="chip"><span class="swatchLineDashed"></span> Ready line</span>
           <span class="chip"><span class="swatchNow"></span> Now</span>
+          <span class="chip"><span class="swatch zoneDangerSwatch"></span> Too early</span>
+          <span class="chip"><span class="swatch zonePositiveSwatch"></span> Fully recovered</span>
         </div>
-        <div class="legendRow" aria-label="Recovery zones">
-  <span class="chip"><span class="swatch zoneDangerSwatch"></span> Too early: mostly fatigue</span>
-  <span class="chip"><span class="swatch zonePositiveSwatch"></span> Fully recovered (conservative)</span>
-</div>
       </div>
 
       <p class="note" id="explainText"></p>
@@ -311,9 +313,9 @@
         <div class="control">
           <div class="controlTop">
             <label for="horizon">Chart horizon (hours)</label>
-            <output id="horizonOut">72</output>
+            <output id="horizonOut">48</output>
           </div>
-          <input id="horizon" type="range" min="24" max="168" step="6" value="72" />
+          <input id="horizon" type="range" min="24" max="96" step="6" value="48" />
         </div>
 
         <div class="control">
@@ -356,13 +358,14 @@
       const intensityExponent = params.intensityExponent ?? 1.25;
       const baseTauHours = params.baseTauHours ?? 14.0;
       const tauPerIntensity = params.tauPerIntensity ?? 4.0;
+      const tauPerHour = params.tauPerHour ?? 1.4; // duration effect (rule-of-thumb)
       const readyFraction = clamp(params.readyFraction ?? 0.25, 0.01, 0.99);
 
       // load is an arbitrary unit: higher intensity and longer duration -> more fatigue
       const load = Math.pow(intensity, intensityExponent) * durationMin;
 
-      // recovery time constant grows with intensity
-      const tau = baseTauHours + intensity * tauPerIntensity;
+      // recovery time constant grows with intensity and duration
+      const tau = baseTauHours + intensity * tauPerIntensity + (durationMin / 60) * tauPerHour;
 
       function fatigueAt(h){
         return load * Math.exp(-h / tau);
@@ -507,6 +510,45 @@
             },
             backgroundColor: () => "rgba(29,104,216,0.08)",
           },
+
+          // Reference curves (faint): show the range from easy -> brutal
+          {
+            label: "Intensity 1 (easy)",
+            data: [],
+            tension: 0.35,
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+            borderColor: () => "rgba(127,127,127,0.22)",
+          },
+          {
+            label: "Intensity 2",
+            data: [],
+            tension: 0.35,
+            borderWidth: 1.25,
+            pointRadius: 0,
+            fill: false,
+            borderColor: () => "rgba(127,127,127,0.18)",
+          },
+          {
+            label: "Intensity 4",
+            data: [],
+            tension: 0.35,
+            borderWidth: 1.25,
+            pointRadius: 0,
+            fill: false,
+            borderColor: () => "rgba(127,127,127,0.18)",
+          },
+          {
+            label: "Intensity 5 (brutal)",
+            data: [],
+            tension: 0.35,
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+            borderColor: () => "rgba(127,127,127,0.22)",
+          },
+
           {
             label: "Ready line",
             data: [],
@@ -596,7 +638,7 @@
 
       const model = makeModel(
         { intensity: inp.intensity, durationMin: inp.durationMin, hoursSince: inp.hoursSince },
-        { intensityExponent: 1.25, baseTauHours: 14.0, tauPerIntensity: 4.0, readyFraction: inp.readyFraction }
+        { intensityExponent: 1.25, baseTauHours: 14.0, tauPerIntensity: 4.0, tauPerHour: 1.4, readyFraction: inp.readyFraction }
       );
 
       // headline values
@@ -604,26 +646,62 @@
       els.recoveryNow.textContent = `${Math.round(model.recoveryNow * 100)}%`;
       els.timeToRecover.textContent = formatHours(model.hoursUntilReady);
 
-      els.explainText.textContent =
-        model.hoursUntilReady <= 0
-          ? "You’re good to go — another session should be worth doing now."
-          : "Give it a bit more time — you’ll get more value from your next session once you’re past the line.";
 
       // build series (recovery over time)
       const step = 1;
       const series = [];
       const readyLine = [];
+      const i1 = [];
+      const i2 = [];
+      const i4 = [];
+      const i5 = [];
 
-      for (let h = 0; h <= inp.horizon; h += step){
+      // Build reference models using the same settings, only changing intensity.
+      const model1 = makeModel(
+        { intensity: 1, durationMin: inp.durationMin, hoursSince: inp.hoursSince },
+        { intensityExponent: 1.25, baseTauHours: 14.0, tauPerIntensity: 4.0, tauPerHour: 1.4, readyFraction: inp.readyFraction }
+      );
+      const model2 = makeModel(
+        { intensity: 2, durationMin: inp.durationMin, hoursSince: inp.hoursSince },
+        { intensityExponent: 1.25, baseTauHours: 14.0, tauPerIntensity: 4.0, tauPerHour: 1.4, readyFraction: inp.readyFraction }
+      );
+      const model4 = makeModel(
+        { intensity: 4, durationMin: inp.durationMin, hoursSince: inp.hoursSince },
+        { intensityExponent: 1.25, baseTauHours: 14.0, tauPerIntensity: 4.0, tauPerHour: 1.4, readyFraction: inp.readyFraction }
+      );
+      const model5 = makeModel(
+        { intensity: 5, durationMin: inp.durationMin, hoursSince: inp.hoursSince },
+        { intensityExponent: 1.25, baseTauHours: 14.0, tauPerIntensity: 4.0, tauPerHour: 1.4, readyFraction: inp.readyFraction }
+      );
+
+      const horizonShown = Math.min(inp.horizon, 48);
+      for (let h = 0; h <= horizonShown; h += step){
+        // main (selected intensity)
         const remaining = model.load > 0 ? (model.fatigueAt(h) / model.load) : 0;
-        const recovery = 1 - remaining;
-        series.push({ x: h, y: recovery });
+        series.push({ x: h, y: 1 - remaining });
+
+        // reference curves
+        const rem1 = model1.load > 0 ? (model1.fatigueAt(h) / model1.load) : 0;
+        const rem2 = model2.load > 0 ? (model2.fatigueAt(h) / model2.load) : 0;
+        const rem4 = model4.load > 0 ? (model4.fatigueAt(h) / model4.load) : 0;
+        const rem5 = model5.load > 0 ? (model5.fatigueAt(h) / model5.load) : 0;
+        i1.push({ x: h, y: 1 - rem1 });
+        i2.push({ x: h, y: 1 - rem2 });
+        i4.push({ x: h, y: 1 - rem4 });
+        i5.push({ x: h, y: 1 - rem5 });
+
         readyLine.push({ x: h, y: model.readyRecovery });
       }
 
+      // Assign datasets (indices updated)
       chart.data.datasets[0].data = series;
-      chart.data.datasets[1].data = readyLine;
-      chart.options.scales.x.max = inp.horizon;
+      chart.data.datasets[1].data = i1;
+      chart.data.datasets[2].data = i2;
+      chart.data.datasets[3].data = i4;
+      chart.data.datasets[4].data = i5;
+      chart.data.datasets[5].data = readyLine;
+
+      chart.options.scales.x.max = horizonShown;
 
       // update zones (regions with meaning)
       chart.options.plugins.zones.readyThreshold = model.readyRecovery;
@@ -647,7 +725,7 @@ chart.options.plugins.zones.dangerColor = hexToRgba(dangerHex, 0.14);
 chart.options.plugins.zones.positiveColor = hexToRgba(goodHex, 0.10);
 
       // now marker (dot on curve + vertical line)
-      chart.data.datasets[2].data = [{ x: inp.hoursSince, y: model.recoveryNow }];
+      chart.data.datasets[6].data = [{ x: inp.hoursSince, y: model.recoveryNow }];
       chart.options.plugins.nowLine.xNow = inp.hoursSince;
 
       // human-speak explanation based on zones
@@ -656,14 +734,14 @@ chart.options.plugins.zones.positiveColor = hexToRgba(goodHex, 0.10);
       const now = model.recoveryNow;
 
       if (now < ready){
-        els.explainText.textContent =
-          "Too early: you’re still in the fatigue-dominant zone. Waiting a bit makes your next session more productive.";
+        els.explainText.innerHTML =
+          `<span class="statusTag statusDanger">Too early:</span> you’re still in the fatigue-dominant zone. Waiting a bit makes your next session more productive.`;
       } else if (now < full){
-        els.explainText.textContent =
-          "Productive: you’re recovered enough that another session is generally worth doing.";
+        els.explainText.innerHTML =
+          `<span class="statusTag statusReady">Ready:</span> you’re recovered enough that another session is generally worth doing.`;
       } else {
-        els.explainText.textContent =
-          "Fully recovered (conservative): fatigue is unlikely to be the limiting factor right now.";
+        els.explainText.innerHTML =
+          `<span class="statusTag statusGood">Fully recovered:</span> fatigue is unlikely to be the limiting factor right now.`;
       }
 
       chart.update();
